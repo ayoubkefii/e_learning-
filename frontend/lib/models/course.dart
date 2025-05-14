@@ -1,9 +1,11 @@
+import 'package:flutter/foundation.dart';
+
 class Course {
   final int id;
   final String title;
   final String description;
   final int trainerId;
-  final String trainerName;
+  final String? trainerName;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<Module>? modules;
@@ -13,7 +15,7 @@ class Course {
     required this.title,
     required this.description,
     required this.trainerId,
-    required this.trainerName,
+    this.trainerName,
     required this.createdAt,
     required this.updatedAt,
     this.modules,
@@ -22,8 +24,8 @@ class Course {
   factory Course.fromJson(Map<String, dynamic> json) {
     return Course(
       id: int.parse(json['id'].toString()),
-      title: json['title'],
-      description: json['description'],
+      title: json['title'] ?? '',
+      description: json['description'] ?? '',
       trainerId: int.parse(json['trainer_id'].toString()),
       trainerName: json['trainer_name'],
       createdAt: DateTime.parse(json['created_at']),

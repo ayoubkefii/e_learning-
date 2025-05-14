@@ -9,6 +9,7 @@ class Course {
     public $trainer_id;
     public $created_at;
     public $updated_at;
+    public $trainer_name;
 
     public function __construct($db) {
         $this->conn = $db;
@@ -37,7 +38,7 @@ class Course {
         return false;
     }
 
-    public function read() {
+    public function readOne() {
         $query = "SELECT c.*, u.username as trainer_name
                 FROM " . $this->table_name . " c
                 LEFT JOIN users u ON c.trainer_id = u.id
@@ -47,7 +48,17 @@ class Course {
         $stmt->bindParam(":id", $this->id);
         $stmt->execute();
 
-        return $stmt;
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        if ($row) {
+            $this->title = $row['title'];
+            $this->description = $row['description'];
+            $this->trainer_id = $row['trainer_id'];
+            $this->created_at = $row['created_at'];
+            $this->updated_at = $row['updated_at'];
+            $this->trainer_name = $row['trainer_name'];
+            return $row;
+        }
+        return false;
     }
 
     public function readAll() {
@@ -59,7 +70,7 @@ class Course {
         $stmt = $this->conn->prepare($query);
         $stmt->execute();
 
-        return $stmt;
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function readByTrainer() {
@@ -73,7 +84,7 @@ class Course {
         $stmt->bindParam(":trainer_id", $this->trainer_id);
         $stmt->execute();
 
-        return $stmt;
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
     public function update() {

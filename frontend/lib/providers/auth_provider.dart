@@ -1,11 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
 import '../services/api_service.dart';
 
 class AuthProvider with ChangeNotifier {
   User? _user;
-  late final ApiService _apiService;
+  final ApiService _apiService;
   bool _isLoading = false;
   String? _error;
 
@@ -15,9 +14,7 @@ class AuthProvider with ChangeNotifier {
   bool get isAuthenticated => _user != null;
   bool get isTrainer => _user?.role == 'trainer';
 
-  AuthProvider(SharedPreferences prefs) {
-    _apiService = ApiService(prefs);
-  }
+  AuthProvider(this._apiService);
 
   Future<bool> login(String email, String password) async {
     _isLoading = true;

@@ -4,87 +4,108 @@ import '../models/course.dart';
 import 'api_service.dart';
 
 class CourseService {
-  // ignore: unused_field
   final ApiService _apiService;
-  final Dio _dio;
 
-  CourseService(this._apiService) : _dio = _apiService.dio;
+  CourseService(this._apiService);
 
   Future<List<Course>> getCourses() async {
     try {
-      final response = await _dio.get('/courses/read.php');
+      print('CourseService: Fetching courses...');
+      final response = await _apiService.dio.get(
+        '/courses/list.php',
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
+      );
+
+      print('CourseService: Response status: ${response.statusCode}');
+      print('CourseService: Response data: ${response.data}');
+
       if (response.statusCode == 200) {
-        final List<dynamic> coursesJson = response.data['records'];
-        return coursesJson.map((json) => Course.fromJson(json)).toList();
+        if (response.data is List) {
+          return (response.data as List)
+              .map((json) => Course.fromJson(json))
+              .toList();
+        } else if (response.data is Map && response.data['courses'] is List) {
+          return (response.data['courses'] as List)
+              .map((json) => Course.fromJson(json))
+              .toList();
+        } else if (response.data is Map && response.data['records'] is List) {
+          return (response.data['records'] as List)
+              .map((json) => Course.fromJson(json))
+              .toList();
+        } else {
+          print('CourseService: Unexpected response format: ${response.data}');
+          throw Exception('Invalid response format');
+        }
+      } else if (response.statusCode == 404) {
+        print('CourseService: No courses found');
+        return [];
       }
-      throw Exception('Failed to load courses');
+      throw Exception('Failed to load courses: ${response.statusCode}');
+    } on DioException catch (e) {
+      print('CourseService: DioError getting courses:');
+      print('Error type: ${e.type}');
+      print('Error message: ${e.message}');
+      print('Error response: ${e.response?.data}');
+      print('Request URL: ${e.requestOptions.uri}');
+      print('Request headers: ${e.requestOptions.headers}');
+      throw Exception('Failed to load courses: ${e.message}');
     } catch (e) {
-      print('Error getting courses: $e');
-      rethrow;
+      print('CourseService: Unexpected error getting courses: $e');
+      throw Exception('Failed to load courses: $e');
     }
   }
 
   Future<Course> getCourse(int id) async {
     try {
-      final response = await _dio.get('/courses/read_one.php?id=$id');
-      if (response.statusCode == 200) {
-        return Course.fromJson(response.data);
-      }
-      throw Exception('Failed to load course');
+      final response = await _apiService.dio.get('/courses/read.php?id=$id');
+      return Course.fromJson(response.data);
     } catch (e) {
-      print('Error getting course: $e');
-      rethrow;
+      throw Exception('Failed to load course: $e');
     }
   }
 
   Future<Course> createCourse(Course course) async {
     try {
-      final response = await _dio.post(
+      final response = await _apiService.dio.post(
         '/courses/create.php',
-        data: jsonEncode(course.toJson()),
+        data: course.toJson(),
       );
-      if (response.statusCode == 201) {
-        return course;
-      }
-      throw Exception('Failed to create course');
+      return Course.fromJson(response.data);
     } catch (e) {
-      print('Error creating course: $e');
-      rethrow;
+      throw Exception('Failed to create course: $e');
     }
   }
 
-  Future<Course> updateCourse(Course course) async {
+  Future<void> updateCourse(Course course) async {
     try {
-      final response = await _dio.put(
+      await _apiService.dio.put(
         '/courses/update.php',
-        data: jsonEncode(course.toJson()),
+        data: course.toJson(),
       );
-      if (response.statusCode == 200) {
-        return course;
-      }
-      throw Exception('Failed to update course');
     } catch (e) {
-      print('Error updating course: $e');
-      rethrow;
+      throw Exception('Failed to update course: $e');
     }
   }
 
   Future<void> deleteCourse(int id) async {
     try {
-      final response = await _dio.delete('/courses/delete.php?id=$id');
-      if (response.statusCode != 200) {
-        throw Exception('Failed to delete course');
-      }
+      await _apiService.dio.delete('/courses/delete.php?id=$id');
     } catch (e) {
-      print('Error deleting course: $e');
-      rethrow;
+      throw Exception('Failed to delete course: $e');
     }
   }
 
   Future<List<Course>> getTrainerCourses(int trainerId) async {
     try {
-      final response =
-          await _dio.get('/courses/read_by_trainer.php?trainer_id=$trainerId');
+      final response = await _apiService.dio
+          .get('/courses/read_by_trainer.php?trainer_id=$trainerId');
       if (response.statusCode == 200) {
         final List<dynamic> coursesJson = response.data['records'];
         return coursesJson.map((json) => Course.fromJson(json)).toList();

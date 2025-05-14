@@ -37,7 +37,7 @@ class ApiService {
       print('Email: $email');
 
       final response = await dio.post(
-        '$baseUrl/auth/login.php',
+        '/auth/login.php',
         data: jsonEncode({
           'email': email,
           'password': password,
@@ -99,7 +99,7 @@ class ApiService {
       print('Role: $role');
 
       final response = await dio.post(
-        '$baseUrl/auth/register.php',
+        '/auth/register.php',
         data: jsonEncode({
           'username': username,
           'email': email,
@@ -150,21 +150,58 @@ class ApiService {
   // Courses
   Future<List<Course>> getCourses() async {
     try {
-      final response = await dio.get('$baseUrl/courses');
+      print('Fetching courses...');
+      final token = prefs.getString('token');
+      print('Using token: $token');
+
+      final response = await dio.get(
+        '/courses/list.php',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
+      );
+
+      print('Courses response status: ${response.statusCode}');
+      print('Courses response data: ${response.data}');
+
       if (response.statusCode == 200) {
-        return (response.data as List)
-            .map((json) => Course.fromJson(json))
-            .toList();
+        if (response.data is List) {
+          return (response.data as List)
+              .map((json) => Course.fromJson(json))
+              .toList();
+        } else if (response.data is Map && response.data['courses'] is List) {
+          return (response.data['courses'] as List)
+              .map((json) => Course.fromJson(json))
+              .toList();
+        } else {
+          print('Unexpected response format: ${response.data}');
+          throw Exception('Invalid response format');
+        }
       }
-      throw Exception('Failed to load courses');
+      throw Exception('Failed to load courses: ${response.statusCode}');
+    } on DioException catch (e) {
+      print('DioError getting courses:');
+      print('Error type: ${e.type}');
+      print('Error message: ${e.message}');
+      print('Error response: ${e.response?.data}');
+      print('Request URL: ${e.requestOptions.uri}');
+      print('Request headers: ${e.requestOptions.headers}');
+      throw Exception('Failed to load courses: ${e.message}');
     } catch (e) {
+      print('Unexpected error getting courses: $e');
       throw Exception('Failed to load courses: $e');
     }
   }
 
   Future<Course> getCourse(int id) async {
     try {
-      final response = await dio.get('$baseUrl/courses/$id');
+      final response = await dio.get('/courses/get.php?id=$id');
       if (response.statusCode == 200) {
         return Course.fromJson(response.data);
       }
@@ -177,7 +214,7 @@ class ApiService {
   Future<Course> createCourse(Course course) async {
     try {
       final response = await dio.post(
-        '$baseUrl/courses',
+        '/courses/create.php',
         data: course.toJson(),
       );
       if (response.statusCode == 201) {
@@ -191,8 +228,8 @@ class ApiService {
 
   Future<void> updateCourse(Course course) async {
     try {
-      final response = await dio.put(
-        '$baseUrl/courses/${course.id}',
+      final response = await dio.post(
+        '/courses/update.php',
         data: course.toJson(),
       );
       if (response.statusCode != 200) {
@@ -205,7 +242,10 @@ class ApiService {
 
   Future<void> deleteCourse(int id) async {
     try {
-      final response = await dio.delete('$baseUrl/courses/$id');
+      final response = await dio.post(
+        '/courses/delete.php',
+        data: {'id': id},
+      );
       if (response.statusCode != 200) {
         throw Exception('Failed to delete course');
       }
@@ -218,8 +258,9 @@ class ApiService {
   Future<void> submitQuizAttempt(int quizId, Map<int, int> answers) async {
     try {
       final response = await dio.post(
-        '$baseUrl/progress/quiz/$quizId',
+        '/progress/quiz_attempt.php',
         data: {
+          'quiz_id': quizId,
           'answers': answers,
         },
       );
@@ -234,7 +275,7 @@ class ApiService {
   // Progress
   Future<Map<String, dynamic>> getUserProgress() async {
     try {
-      final response = await dio.get('$baseUrl/progress');
+      final response = await dio.get('/progress/get.php');
       if (response.statusCode == 200) {
         return response.data;
       }
@@ -247,7 +288,7 @@ class ApiService {
   Future<void> updateLessonProgress(int lessonId, String status) async {
     try {
       final response = await dio.post(
-        '$baseUrl/progress',
+        '/progress/update.php',
         data: {
           'lesson_id': lessonId,
           'status': status,
