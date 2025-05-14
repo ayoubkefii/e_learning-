@@ -39,9 +39,9 @@ class _LoginPageState extends State<LoginPage> {
         // Navigate to home page based on user role
         final user = context.read<AuthProvider>().user;
         if (user?.role == 'trainer') {
-          Navigator.pushReplacementNamed(context, '/trainer/dashboard');
+          Navigator.pushReplacementNamed(context, '/trainer-dashboard');
         } else {
-          Navigator.pushReplacementNamed(context, '/learner/dashboard');
+          Navigator.pushReplacementNamed(context, '/learner-dashboard');
         }
       } else if (mounted) {
         final errorMessage = context.read<AuthProvider>().error ??
