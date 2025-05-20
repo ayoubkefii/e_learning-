@@ -28,8 +28,8 @@ class LearnerDashboard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Welcome, ${user?.username}!',
-              style: Theme.of(context).textTheme.headlineSmall,
+              'Welcome, ${user?.name}!',
+              style: Theme.of(context).textTheme.headlineMedium,
             ),
             const SizedBox(height: 24),
             Card(

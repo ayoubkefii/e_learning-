@@ -16,7 +16,7 @@ class CourseProvider with ChangeNotifier {
 
   CourseProvider(this._courseService);
 
-  Future<void> loadCourses() async {
+  Future<void> fetchCourses() async {
     try {
       _isLoading = true;
       _error = null;
@@ -33,6 +33,7 @@ class CourseProvider with ChangeNotifier {
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
+      rethrow;
     }
   }
 
@@ -52,11 +53,20 @@ class CourseProvider with ChangeNotifier {
     }
   }
 
-  Future<void> createCourse(Course course) async {
+  Future<void> createCourse(String title, String description) async {
     try {
       _isLoading = true;
       _error = null;
       notifyListeners();
+
+      final course = Course(
+        id: 0, // This will be set by the backend
+        title: title,
+        description: description,
+        trainerId: 0, // This will be set by the backend
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      );
 
       final newCourse = await _courseService.createCourse(course);
       _courses.add(newCourse);
@@ -67,6 +77,7 @@ class CourseProvider with ChangeNotifier {
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
+      rethrow;
     }
   }
 
@@ -123,5 +134,16 @@ class CourseProvider with ChangeNotifier {
   void clearError() {
     _error = null;
     notifyListeners();
+  }
+
+  Future<Course> getCourse(int id) async {
+    try {
+      _error = null;
+      return await _courseService.getCourse(id);
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+      rethrow;
+    }
   }
 }

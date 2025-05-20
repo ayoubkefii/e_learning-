@@ -11,12 +11,19 @@ class ModuleService {
   Future<List<Module>> getModulesByCourse(int courseId) async {
     try {
       print('ModuleService: Fetching modules for course $courseId...');
+
+      // Get token from ApiService
+      final token = _apiService.prefs.getString('token');
+      print('ModuleService: Using token: $token');
+
       final response = await _apiService.dio.get(
         '/modules/read_by_course.php',
         queryParameters: {'course_id': courseId},
         options: Options(
           headers: {
+            'Authorization': token != null ? 'Bearer $token' : '',
             'Accept': 'application/json',
+            'Content-Type': 'application/json',
           },
           validateStatus: (status) {
             return status! < 500;
@@ -29,16 +36,41 @@ class ModuleService {
 
       if (response.statusCode == 200) {
         if (response.data is Map && response.data['records'] is List) {
-          return (response.data['records'] as List)
+          final modules = (response.data['records'] as List)
               .map((json) => Module.fromJson(json))
               .toList();
+          print('ModuleService: Successfully parsed ${modules.length} modules');
+          return modules;
+        } else {
+          print('ModuleService: No modules found or invalid response format');
+          return [];
         }
+      } else if (response.statusCode == 404) {
+        print('ModuleService: No modules found for course $courseId');
         return [];
       }
-      throw Exception(
-          'Failed to load modules: ${response.data['message'] ?? 'Unknown error'}');
+
+      final errorMessage =
+          response.data is Map ? response.data['message'] : 'Unknown error';
+      throw Exception('Failed to load modules: $errorMessage');
+    } on DioException catch (e) {
+      print('ModuleService: DioError getting modules:');
+      print('Error type: ${e.type}');
+      print('Error message: ${e.message}');
+      print('Error response: ${e.response?.data}');
+      print('Request URL: ${e.requestOptions.uri}');
+      print('Request headers: ${e.requestOptions.headers}');
+
+      if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Unable to connect to the server. Please check if XAMPP is running and Apache is started.');
+      }
+
+      final errorMessage =
+          e.response?.data is Map ? e.response?.data['message'] : e.message;
+      throw Exception('Failed to load modules: $errorMessage');
     } catch (e) {
-      print('ModuleService: Error getting modules: $e');
+      print('ModuleService: Unexpected error getting modules: $e');
       throw Exception('Failed to load modules: $e');
     }
   }

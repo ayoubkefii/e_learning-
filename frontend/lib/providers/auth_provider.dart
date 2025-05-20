@@ -12,25 +12,53 @@ class AuthProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get error => _error;
   bool get isAuthenticated => _user != null;
-  bool get isTrainer => _user?.role == 'trainer';
+  bool get isTrainer => _user?.role.trim().toLowerCase() == 'trainer';
 
   AuthProvider(this._apiService);
 
   Future<bool> login(String email, String password) async {
-    _isLoading = true;
-    _error = null;
-    notifyListeners();
-
     try {
-      _user = await _apiService.login(email, password);
-      _isLoading = false;
+      _isLoading = true;
+      _error = null;
       notifyListeners();
-      return true;
-    } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
+
+      final response = await _apiService.post(
+        '/auth/login.php',
+        data: {
+          'email': email,
+          'password': password,
+        },
+      );
+
+      print('DEBUG: Login response status: ${response.statusCode}');
+      print('DEBUG: Raw response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        final data = response.data;
+        print('DEBUG: Parsed login data: $data');
+        print('DEBUG: User data from response: ${data['user']}');
+
+        if (data['user'] != null) {
+          _user = User.fromJson(data['user']);
+          print('DEBUG: Created user object: ${_user?.toJson()}');
+          print('DEBUG: User role after creation: ${_user?.role}');
+          print('DEBUG: Is trainer check: ${_user?.role.trim().toLowerCase() == 'trainer'}');
+          notifyListeners();
+          return true;
+        }
+      }
+
+      _error = 'Invalid credentials';
       notifyListeners();
       return false;
+    } catch (e) {
+      print('DEBUG: Login error: $e');
+      _error = e.toString();
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
     }
   }
 

@@ -36,13 +36,8 @@ class _LoginPageState extends State<LoginPage> {
             backgroundColor: Colors.green,
           ),
         );
-        // Navigate to home page based on user role
-        final user = context.read<AuthProvider>().user;
-        if (user?.role == 'trainer') {
-          Navigator.pushReplacementNamed(context, '/trainer-dashboard');
-        } else {
-          Navigator.pushReplacementNamed(context, '/learner-dashboard');
-        }
+        // Navigate to home page instead of role-based dashboard
+        Navigator.pushReplacementNamed(context, '/');
       } else if (mounted) {
         final errorMessage = context.read<AuthProvider>().error ??
             'Login failed. Please check your credentials.';

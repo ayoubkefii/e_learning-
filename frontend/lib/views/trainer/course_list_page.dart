@@ -3,8 +3,9 @@ import 'package:provider/provider.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../providers/course_provider.dart';
 import '../../models/course.dart';
+import '../../providers/auth_provider.dart';
+import '../course_details_page.dart';
 import 'create_course_page.dart';
-import 'course_details_page.dart';
 
 class CourseListPage extends StatefulWidget {
   const CourseListPage({super.key});
@@ -20,11 +21,11 @@ class _CourseListPageState extends State<CourseListPage> {
   void initState() {
     super.initState();
     // Load courses when the page is first created
-    Future.microtask(() => context.read<CourseProvider>().loadCourses());
+    Future.microtask(() => context.read<CourseProvider>().fetchCourses());
   }
 
-  Future<void> _handleRefresh() async {
-    await context.read<CourseProvider>().loadCourses();
+  Future<void> _refreshCourses() async {
+    await context.read<CourseProvider>().fetchCourses();
   }
 
   Future<void> _handleDeleteCourse(Course course) async {
@@ -112,7 +113,7 @@ class _CourseListPageState extends State<CourseListPage> {
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     onPressed: () {
-                      courseProvider.loadCourses();
+                      courseProvider.fetchCourses();
                     },
                     icon: const Icon(Icons.refresh),
                     label: const Text('Retry'),
@@ -168,7 +169,7 @@ class _CourseListPageState extends State<CourseListPage> {
           }
 
           return RefreshIndicator(
-            onRefresh: _handleRefresh,
+            onRefresh: _refreshCourses,
             child: ListView.builder(
               itemCount: courses.length,
               itemBuilder: (context, index) {
@@ -253,7 +254,7 @@ class _CourseListPageState extends State<CourseListPage> {
                                             : () {
                                                 Navigator.pushNamed(
                                                   context,
-                                                  '/trainer/courses/details',
+                                                  '/trainer/courses/edit',
                                                   arguments: course.id,
                                                 );
                                               },

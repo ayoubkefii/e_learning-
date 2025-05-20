@@ -15,11 +15,11 @@ class ApiService {
 
   ApiService(this.prefs)
       : baseUrl = kIsWeb
-            ? 'http://localhost/e_learning/backend/api' // Use localhost for web
-            : 'http://10.0.2.2/e_learning/backend/api', // Use 10.0.2.2 for Android emulator
+            ? 'http://127.0.0.1/e_learning/backend/api'
+            : 'http://10.0.2.2/e_learning/backend/api',
         dio = Dio(BaseOptions(
           baseUrl: kIsWeb
-              ? 'http://localhost/e_learning/backend/api'
+              ? 'http://127.0.0.1/e_learning/backend/api'
               : 'http://10.0.2.2/e_learning/backend/api',
           connectTimeout: const Duration(seconds: 30),
           receiveTimeout: const Duration(seconds: 30),
@@ -33,13 +33,6 @@ class ApiService {
         )) {
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
-        // Add CORS headers
-        options.headers['Access-Control-Allow-Origin'] = '*';
-        options.headers['Access-Control-Allow-Methods'] =
-            'GET, POST, PUT, DELETE, OPTIONS';
-        options.headers['Access-Control-Allow-Headers'] =
-            'Origin, Content-Type, Accept, Authorization, X-Request-With';
-
         print('Making request to: ${options.uri}');
         print('Request headers: ${options.headers}');
         print('Request data: ${options.data}');
@@ -49,6 +42,7 @@ class ApiService {
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
+
         return handler.next(options);
       },
       onResponse: (response, handler) {
@@ -81,11 +75,18 @@ class ApiService {
         }
 
         if (error.type == DioExceptionType.connectionError) {
+          String errorMessage = 'Unable to connect to the server.';
+          if (error.message?.contains('XMLHttpRequest') ?? false) {
+            errorMessage =
+                'CORS error: Please ensure the server is properly configured for cross-origin requests. Try clearing your browser cache and refreshing the page.';
+          } else {
+            errorMessage =
+                'Connection error. Please check if XAMPP is running and Apache is started.';
+          }
           return handler.reject(
             DioException(
               requestOptions: error.requestOptions,
-              error:
-                  'Unable to connect to the server. Please check your internet connection or try again later.',
+              error: errorMessage,
               type: error.type,
             ),
           );
@@ -224,8 +225,9 @@ class ApiService {
         '/courses/list.php',
         options: Options(
           headers: {
-            'Authorization': 'Bearer $token',
+            'Authorization': token != null ? 'Bearer $token' : '',
             'Accept': 'application/json',
+            'Content-Type': 'application/json',
           },
           validateStatus: (status) {
             return status! < 500;
@@ -237,18 +239,22 @@ class ApiService {
       print('Courses response data: ${response.data}');
 
       if (response.statusCode == 200) {
-        if (response.data is List) {
-          return (response.data as List)
-              .map((json) => Course.fromJson(json))
-              .toList();
-        } else if (response.data is Map && response.data['courses'] is List) {
-          return (response.data['courses'] as List)
+        if (response.data is Map && response.data['records'] is List) {
+          return (response.data['records'] as List)
               .map((json) => Course.fromJson(json))
               .toList();
         } else {
           print('Unexpected response format: ${response.data}');
+          if (response.data is String &&
+              response.data.toString().contains('<br/>')) {
+            throw Exception(
+                'Server error: PHP error detected. Please check server logs.');
+          }
           throw Exception('Invalid response format');
         }
+      } else if (response.statusCode == 404) {
+        // No courses found, return empty list
+        return [];
       }
       throw Exception('Failed to load courses: ${response.statusCode}');
     } on DioException catch (e) {
@@ -258,6 +264,19 @@ class ApiService {
       print('Error response: ${e.response?.data}');
       print('Request URL: ${e.requestOptions.uri}');
       print('Request headers: ${e.requestOptions.headers}');
+
+      if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Failed to connect to server. Please check your internet connection and try again.');
+      }
+
+      // Check if the response contains HTML (indicating a PHP error)
+      if (e.response?.data is String &&
+          e.response!.data.toString().contains('<br/>')) {
+        throw Exception(
+            'Server error: PHP error detected. Please check server logs.');
+      }
+
       throw Exception('Failed to load courses: ${e.message}');
     } catch (e) {
       print('Unexpected error getting courses: $e');
@@ -382,6 +401,34 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Failed to update progress: $e');
+    }
+  }
+
+  Future<Response> post(String endpoint, {Map<String, dynamic>? data}) async {
+    try {
+      final token = prefs.getString('token');
+      final response = await dio.post(
+        endpoint,
+        data: data,
+        options: Options(
+          headers: {
+            if (token != null) 'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      // If this is a login response, handle the token
+      if (endpoint == '/auth/login.php' && response.statusCode == 200) {
+        final responseData = response.data;
+        if (responseData is Map<String, dynamic> &&
+            responseData.containsKey('token')) {
+          prefs.setString('token', responseData['token']);
+        }
+      }
+
+      return response;
+    } catch (e) {
+      rethrow;
     }
   }
 }
