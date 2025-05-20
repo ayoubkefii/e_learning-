@@ -3,9 +3,9 @@ class Module {
   final int courseId;
   final String title;
   final String description;
-  final int orderNumber;
+  final int orderIndex;
   final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? updatedAt;
   final List<Lesson>? lessons;
 
   Module({
@@ -13,11 +13,27 @@ class Module {
     required this.courseId,
     required this.title,
     required this.description,
-    required this.orderNumber,
+    required this.orderIndex,
     required this.createdAt,
-    required this.updatedAt,
+    this.updatedAt,
     this.lessons,
   });
+
+  // Factory constructor for creating a new module
+  factory Module.create({
+    required int courseId,
+    required String title,
+    required String description,
+  }) {
+    return Module(
+      id: 0, // Will be set by the backend
+      courseId: courseId,
+      title: title,
+      description: description,
+      orderIndex: 0, // Will be set by the backend
+      createdAt: DateTime.now(), // Will be set by the backend
+    );
+  }
 
   factory Module.fromJson(Map<String, dynamic> json) {
     return Module(
@@ -25,9 +41,11 @@ class Module {
       courseId: int.parse(json['course_id'].toString()),
       title: json['title'],
       description: json['description'],
-      orderNumber: int.parse(json['order_number'].toString()),
+      orderIndex: int.parse(json['order_index'].toString()),
       createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
       lessons: json['lessons'] != null
           ? List<Lesson>.from(json['lessons'].map((x) => Lesson.fromJson(x)))
           : null,
@@ -40,9 +58,9 @@ class Module {
       'course_id': courseId,
       'title': title,
       'description': description,
-      'order_number': orderNumber,
+      'order_index': orderIndex,
       'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
       'lessons': lessons?.map((x) => x.toJson()).toList(),
     };
   }
@@ -52,7 +70,7 @@ class Module {
     int? courseId,
     String? title,
     String? description,
-    int? orderNumber,
+    int? orderIndex,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<Lesson>? lessons,
@@ -62,7 +80,7 @@ class Module {
       courseId: courseId ?? this.courseId,
       title: title ?? this.title,
       description: description ?? this.description,
-      orderNumber: orderNumber ?? this.orderNumber,
+      orderIndex: orderIndex ?? this.orderIndex,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       lessons: lessons ?? this.lessons,
@@ -77,9 +95,9 @@ class Lesson {
   final String description;
   final String contentType;
   final String? contentUrl;
-  final int orderNumber;
+  final int orderIndex;
   final DateTime createdAt;
-  final DateTime updatedAt;
+  final DateTime? updatedAt;
 
   Lesson({
     required this.id,
@@ -88,9 +106,9 @@ class Lesson {
     required this.description,
     required this.contentType,
     this.contentUrl,
-    required this.orderNumber,
+    required this.orderIndex,
     required this.createdAt,
-    required this.updatedAt,
+    this.updatedAt,
   });
 
   factory Lesson.fromJson(Map<String, dynamic> json) {
@@ -101,9 +119,11 @@ class Lesson {
       description: json['description'],
       contentType: json['content_type'],
       contentUrl: json['content_url'],
-      orderNumber: int.parse(json['order_number'].toString()),
+      orderIndex: int.parse(json['order_index'].toString()),
       createdAt: DateTime.parse(json['created_at']),
-      updatedAt: DateTime.parse(json['updated_at']),
+      updatedAt: json['updated_at'] != null
+          ? DateTime.parse(json['updated_at'])
+          : null,
     );
   }
 
@@ -115,9 +135,9 @@ class Lesson {
       'description': description,
       'content_type': contentType,
       'content_url': contentUrl,
-      'order_number': orderNumber,
+      'order_index': orderIndex,
       'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt.toIso8601String(),
+      'updated_at': updatedAt?.toIso8601String(),
     };
   }
 
@@ -128,7 +148,7 @@ class Lesson {
     String? description,
     String? contentType,
     String? contentUrl,
-    int? orderNumber,
+    int? orderIndex,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -139,7 +159,7 @@ class Lesson {
       description: description ?? this.description,
       contentType: contentType ?? this.contentType,
       contentUrl: contentUrl ?? this.contentUrl,
-      orderNumber: orderNumber ?? this.orderNumber,
+      orderIndex: orderIndex ?? this.orderIndex,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

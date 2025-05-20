@@ -36,18 +36,15 @@ class _CreateModulePageState extends State<CreateModulePage> {
 
     try {
       final moduleService = context.read<ModuleService>();
-      final now = DateTime.now();
-      final module = Module(
-        id: 0, // This will be set by the backend
+
+      // Use the factory constructor to create a new module
+      final module = Module.create(
         courseId: widget.courseId,
-        title: _titleController.text,
-        description: _descriptionController.text,
-        orderNumber: 0, // This will be set by the backend
-        createdAt: now,
-        updatedAt: now,
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
       );
 
-      await moduleService.createModule(module);
+      final createdModule = await moduleService.createModule(module);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -56,7 +53,7 @@ class _CreateModulePageState extends State<CreateModulePage> {
             backgroundColor: Colors.green,
           ),
         );
-        Navigator.pop(context);
+        Navigator.pop(context, createdModule);
       }
     } catch (e) {
       if (mounted) {
@@ -82,7 +79,7 @@ class _CreateModulePageState extends State<CreateModulePage> {
       appBar: AppBar(
         title: const Text('Create Module'),
       ),
-      body: Padding(
+      body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
           key: _formKey,
@@ -99,6 +96,9 @@ class _CreateModulePageState extends State<CreateModulePage> {
                   if (value == null || value.isEmpty) {
                     return 'Please enter a title';
                   }
+                  if (value.length < 3) {
+                    return 'Title must be at least 3 characters long';
+                  }
                   return null;
                 },
               ),
@@ -114,6 +114,9 @@ class _CreateModulePageState extends State<CreateModulePage> {
                   if (value == null || value.isEmpty) {
                     return 'Please enter a description';
                   }
+                  if (value.length < 10) {
+                    return 'Description must be at least 10 characters long';
+                  }
                   return null;
                 },
               ),
@@ -121,7 +124,15 @@ class _CreateModulePageState extends State<CreateModulePage> {
               ElevatedButton(
                 onPressed: _isLoading ? null : _createModule,
                 child: _isLoading
-                    ? const CircularProgressIndicator()
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
                     : const Text('Create Module'),
               ),
             ],

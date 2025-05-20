@@ -10,22 +10,88 @@ import '../models/course.dart';
 
 class ApiService {
   final Dio dio;
-  final String baseUrl = 'http://localhost/e_learning/backend/api';
+  final String baseUrl;
   final SharedPreferences prefs;
 
   ApiService(this.prefs)
-      : dio = Dio(BaseOptions(
-          baseUrl: 'http://localhost/e_learning/backend/api',
-          connectTimeout: const Duration(seconds: 5),
-          receiveTimeout: const Duration(seconds: 3),
+      : baseUrl = kIsWeb
+            ? 'http://localhost/e_learning/backend/api' // Use localhost for web
+            : 'http://10.0.2.2/e_learning/backend/api', // Use 10.0.2.2 for Android emulator
+        dio = Dio(BaseOptions(
+          baseUrl: kIsWeb
+              ? 'http://localhost/e_learning/backend/api'
+              : 'http://10.0.2.2/e_learning/backend/api',
+          connectTimeout: const Duration(seconds: 30),
+          receiveTimeout: const Duration(seconds: 30),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
         )) {
     dio.interceptors.add(InterceptorsWrapper(
       onRequest: (options, handler) {
+        // Add CORS headers
+        options.headers['Access-Control-Allow-Origin'] = '*';
+        options.headers['Access-Control-Allow-Methods'] =
+            'GET, POST, PUT, DELETE, OPTIONS';
+        options.headers['Access-Control-Allow-Headers'] =
+            'Origin, Content-Type, Accept, Authorization, X-Request-With';
+
+        print('Making request to: ${options.uri}');
+        print('Request headers: ${options.headers}');
+        print('Request data: ${options.data}');
+
+        // Add token if available
         final token = prefs.getString('token');
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
         }
         return handler.next(options);
+      },
+      onResponse: (response, handler) {
+        print('Response received:');
+        print('Status code: ${response.statusCode}');
+        print('Response data: ${response.data}');
+        return handler.next(response);
+      },
+      onError: (error, handler) {
+        print('Request error:');
+        print('Error type: ${error.type}');
+        print('Error message: ${error.message}');
+        print('Error response: ${error.response?.data}');
+        print('Request URL: ${error.requestOptions.uri}');
+        print('Request headers: ${error.requestOptions.headers}');
+        print('Request data: ${error.requestOptions.data}');
+
+        // Handle specific error types
+        if (error.type == DioExceptionType.connectionTimeout ||
+            error.type == DioExceptionType.receiveTimeout ||
+            error.type == DioExceptionType.sendTimeout) {
+          return handler.reject(
+            DioException(
+              requestOptions: error.requestOptions,
+              error:
+                  'Connection timed out. Please check your internet connection.',
+              type: error.type,
+            ),
+          );
+        }
+
+        if (error.type == DioExceptionType.connectionError) {
+          return handler.reject(
+            DioException(
+              requestOptions: error.requestOptions,
+              error:
+                  'Unable to connect to the server. Please check your internet connection or try again later.',
+              type: error.type,
+            ),
+          );
+        }
+
+        return handler.next(error);
       },
     ));
   }
@@ -213,15 +279,32 @@ class ApiService {
 
   Future<Course> createCourse(Course course) async {
     try {
+      print('Creating course with data: ${course.toJson()}');
+
       final response = await dio.post(
         '/courses/create.php',
         data: course.toJson(),
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
       );
+
+      print('Create course response status: ${response.statusCode}');
+      print('Create course response data: ${response.data}');
+
       if (response.statusCode == 201) {
         return Course.fromJson(response.data);
       }
-      throw Exception('Failed to create course');
+      throw Exception(
+          'Failed to create course: ${response.data['message'] ?? 'Unknown error'}');
     } catch (e) {
+      print('Error creating course: $e');
       throw Exception('Failed to create course: $e');
     }
   }

@@ -21,6 +21,7 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final apiService = ApiService(prefs);
   final courseService = CourseService(apiService);
+  final moduleService = ModuleService(apiService);
 
   runApp(
     MultiProvider(
@@ -30,6 +31,15 @@ void main() async {
         ),
         ChangeNotifierProvider(
           create: (_) => CourseProvider(courseService),
+        ),
+        Provider<CourseService>(
+          create: (_) => courseService,
+        ),
+        Provider<ModuleService>(
+          create: (_) => moduleService,
+        ),
+        Provider<ApiService>(
+          create: (_) => apiService,
         ),
       ],
       child: const MyApp(),
@@ -47,6 +57,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
         useMaterial3: true,
+        textTheme: GoogleFonts.poppinsTextTheme(),
       ),
       initialRoute: '/login',
       routes: {

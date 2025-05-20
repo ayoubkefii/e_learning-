@@ -4,69 +4,143 @@ import '../models/module.dart';
 import 'api_service.dart';
 
 class ModuleService {
-  // ignore: unused_field
   final ApiService _apiService;
-  final Dio _dio;
 
-  ModuleService(this._apiService) : _dio = _apiService.dio;
+  ModuleService(this._apiService);
 
   Future<List<Module>> getModulesByCourse(int courseId) async {
     try {
-      final response =
-          await _dio.get('/modules/read_by_course.php?course_id=$courseId');
+      print('ModuleService: Fetching modules for course $courseId...');
+      final response = await _apiService.dio.get(
+        '/modules/read_by_course.php',
+        queryParameters: {'course_id': courseId},
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
+      );
+
+      print('ModuleService: Response status: ${response.statusCode}');
+      print('ModuleService: Response data: ${response.data}');
+
       if (response.statusCode == 200) {
-        final List<dynamic> modulesJson = response.data['records'];
-        return modulesJson.map((json) => Module.fromJson(json)).toList();
+        if (response.data is Map && response.data['records'] is List) {
+          return (response.data['records'] as List)
+              .map((json) => Module.fromJson(json))
+              .toList();
+        }
+        return [];
       }
-      throw Exception('Failed to load modules');
+      throw Exception(
+          'Failed to load modules: ${response.data['message'] ?? 'Unknown error'}');
     } catch (e) {
-      print('Error getting modules: $e');
-      rethrow;
+      print('ModuleService: Error getting modules: $e');
+      throw Exception('Failed to load modules: $e');
     }
   }
 
   Future<Module> createModule(Module module) async {
     try {
-      final response = await _dio.post(
+      print('ModuleService: Creating module with data: ${module.toJson()}');
+
+      final moduleData = {
+        'course_id': module.courseId,
+        'title': module.title,
+        'description': module.description,
+      };
+
+      final response = await _apiService.dio.post(
         '/modules/create.php',
-        data: jsonEncode(module.toJson()),
+        data: moduleData,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
       );
+
+      print('ModuleService: Create response status: ${response.statusCode}');
+      print('ModuleService: Create response data: ${response.data}');
+
       if (response.statusCode == 201) {
-        return module;
+        return Module.fromJson(response.data);
       }
-      throw Exception('Failed to create module');
+      throw Exception(
+          'Failed to create module: ${response.data['message'] ?? 'Unknown error'}');
     } catch (e) {
-      print('Error creating module: $e');
-      rethrow;
+      print('ModuleService: Error creating module: $e');
+      throw Exception('Failed to create module: $e');
     }
   }
 
-  Future<Module> updateModule(Module module) async {
+  Future<void> updateModule(Module module) async {
     try {
-      final response = await _dio.put(
+      print('ModuleService: Updating module with data: ${module.toJson()}');
+      final response = await _apiService.dio.post(
         '/modules/update.php',
-        data: jsonEncode(module.toJson()),
+        data: module.toJson(),
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
       );
-      if (response.statusCode == 200) {
-        return module;
+
+      print('ModuleService: Update response status: ${response.statusCode}');
+      print('ModuleService: Update response data: ${response.data}');
+
+      if (response.statusCode != 200) {
+        throw Exception(
+            'Failed to update module: ${response.data['message'] ?? 'Unknown error'}');
       }
-      throw Exception('Failed to update module');
     } catch (e) {
-      print('Error updating module: $e');
-      rethrow;
+      print('ModuleService: Error updating module: $e');
+      throw Exception('Failed to update module: $e');
     }
   }
 
   Future<void> deleteModule(int id, int courseId) async {
     try {
-      final response =
-          await _dio.delete('/modules/delete.php?id=$id&course_id=$courseId');
+      print('ModuleService: Deleting module $id from course $courseId');
+      final response = await _apiService.dio.post(
+        '/modules/delete.php',
+        data: {
+          'id': id,
+          'course_id': courseId,
+        },
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
+      );
+
+      print('ModuleService: Delete response status: ${response.statusCode}');
+      print('ModuleService: Delete response data: ${response.data}');
+
       if (response.statusCode != 200) {
-        throw Exception('Failed to delete module');
+        throw Exception(
+            'Failed to delete module: ${response.data['message'] ?? 'Unknown error'}');
       }
     } catch (e) {
-      print('Error deleting module: $e');
-      rethrow;
+      print('ModuleService: Error deleting module: $e');
+      throw Exception('Failed to delete module: $e');
     }
   }
 }

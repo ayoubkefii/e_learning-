@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'dart:typed_data';
 import 'dart:convert';
 import 'package:dio/dio.dart';
 import '../models/course.dart';
@@ -18,7 +20,7 @@ class CourseService {
             'Accept': 'application/json',
           },
           validateStatus: (status) {
-            return status! < 500;
+            return status! < 500; // Accept any status code less than 500
           },
         ),
       );
@@ -27,68 +29,105 @@ class CourseService {
       print('CourseService: Response data: ${response.data}');
 
       if (response.statusCode == 200) {
-        if (response.data is List) {
-          return (response.data as List)
-              .map((json) => Course.fromJson(json))
-              .toList();
-        } else if (response.data is Map && response.data['courses'] is List) {
-          return (response.data['courses'] as List)
-              .map((json) => Course.fromJson(json))
-              .toList();
-        } else if (response.data is Map && response.data['records'] is List) {
+        if (response.data is Map && response.data['records'] is List) {
           return (response.data['records'] as List)
               .map((json) => Course.fromJson(json))
               .toList();
-        } else {
-          print('CourseService: Unexpected response format: ${response.data}');
-          throw Exception('Invalid response format');
         }
-      } else if (response.statusCode == 404) {
-        print('CourseService: No courses found');
-        return [];
       }
-      throw Exception('Failed to load courses: ${response.statusCode}');
-    } on DioException catch (e) {
-      print('CourseService: DioError getting courses:');
-      print('Error type: ${e.type}');
-      print('Error message: ${e.message}');
-      print('Error response: ${e.response?.data}');
-      print('Request URL: ${e.requestOptions.uri}');
-      print('Request headers: ${e.requestOptions.headers}');
-      throw Exception('Failed to load courses: ${e.message}');
+      // If no courses found or any other non-500 status, return empty list
+      print('CourseService: No courses found');
+      return [];
     } catch (e) {
-      print('CourseService: Unexpected error getting courses: $e');
+      print('CourseService: Error getting courses: $e');
       throw Exception('Failed to load courses: $e');
     }
   }
 
   Future<Course> getCourse(int id) async {
     try {
-      final response = await _apiService.dio.get('/courses/read.php?id=$id');
-      return Course.fromJson(response.data);
+      print('CourseService: Getting course with id: $id');
+      final response = await _apiService.dio.get(
+        '/courses/get.php',
+        queryParameters: {'id': id},
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
+      );
+
+      print(
+          'CourseService: Get course response status: ${response.statusCode}');
+      print('CourseService: Get course response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        return Course.fromJson(response.data);
+      }
+      throw Exception(
+          'Failed to load course: ${response.data['message'] ?? 'Unknown error'}');
     } catch (e) {
+      print('CourseService: Error getting course: $e');
       throw Exception('Failed to load course: $e');
     }
   }
 
   Future<Course> createCourse(Course course) async {
     try {
+      // Only send required fields for course creation
+      final courseData = {
+        'title': course.title,
+        'description': course.description,
+        'trainer_id': course.trainerId,
+      };
+
+      print('CourseService: Creating course with data: $courseData');
       final response = await _apiService.dio.post(
         '/courses/create.php',
-        data: course.toJson(),
+        data: courseData,
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) {
+            return status! < 500; // Accept any status code less than 500
+          },
+        ),
       );
-      return Course.fromJson(response.data);
+
+      print('CourseService: Create response status: ${response.statusCode}');
+      print('CourseService: Create response data: ${response.data}');
+
+      if (response.statusCode == 201) {
+        return Course.fromJson(response.data);
+      }
+      throw Exception(
+          'Failed to create course: ${response.data['message'] ?? 'Unknown error'}');
     } catch (e) {
+      print('CourseService: Error creating course: $e');
       throw Exception('Failed to create course: $e');
     }
   }
 
   Future<void> updateCourse(Course course) async {
     try {
-      await _apiService.dio.put(
+      final response = await _apiService.dio.post(
         '/courses/update.php',
-        data: course.toJson(),
+        data: jsonEncode(course.toJson()),
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
       );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update course');
+      }
     } catch (e) {
       throw Exception('Failed to update course: $e');
     }
@@ -96,7 +135,19 @@ class CourseService {
 
   Future<void> deleteCourse(int id) async {
     try {
-      await _apiService.dio.delete('/courses/delete.php?id=$id');
+      final response = await _apiService.dio.post(
+        '/courses/delete.php',
+        data: jsonEncode({'id': id}),
+        options: Options(
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete course');
+      }
     } catch (e) {
       throw Exception('Failed to delete course: $e');
     }
