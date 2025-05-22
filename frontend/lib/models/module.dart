@@ -4,8 +4,9 @@ class Module {
   final String title;
   final String description;
   final int orderIndex;
-  final DateTime createdAt;
-  final DateTime? updatedAt;
+  final String? imageUrl;
+  final String createdAt;
+  final String updatedAt;
   final List<Lesson>? lessons;
 
   Module({
@@ -14,8 +15,9 @@ class Module {
     required this.title,
     required this.description,
     required this.orderIndex,
+    this.imageUrl,
     required this.createdAt,
-    this.updatedAt,
+    required this.updatedAt,
     this.lessons,
   });
 
@@ -31,7 +33,9 @@ class Module {
       title: title,
       description: description,
       orderIndex: 0, // Will be set by the backend
-      createdAt: DateTime.now(), // Will be set by the backend
+      imageUrl: null,
+      createdAt: DateTime.now().toIso8601String(), // Will be set by the backend
+      updatedAt: DateTime.now().toIso8601String(), // Will be set by the backend
     );
   }
 
@@ -42,10 +46,9 @@ class Module {
       title: json['title'],
       description: json['description'],
       orderIndex: int.parse(json['order_index'].toString()),
-      createdAt: DateTime.parse(json['created_at']),
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
+      imageUrl: json['image_url'],
+      createdAt: json['created_at'],
+      updatedAt: json['updated_at'],
       lessons: json['lessons'] != null
           ? List<Lesson>.from(json['lessons'].map((x) => Lesson.fromJson(x)))
           : null,
@@ -59,8 +62,9 @@ class Module {
       'title': title,
       'description': description,
       'order_index': orderIndex,
-      'created_at': createdAt.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
+      'image_url': imageUrl,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
       'lessons': lessons?.map((x) => x.toJson()).toList(),
     };
   }
@@ -71,8 +75,9 @@ class Module {
     String? title,
     String? description,
     int? orderIndex,
-    DateTime? createdAt,
-    DateTime? updatedAt,
+    String? imageUrl,
+    String? createdAt,
+    String? updatedAt,
     List<Lesson>? lessons,
   }) {
     return Module(
@@ -81,6 +86,7 @@ class Module {
       title: title ?? this.title,
       description: description ?? this.description,
       orderIndex: orderIndex ?? this.orderIndex,
+      imageUrl: imageUrl ?? this.imageUrl,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       lessons: lessons ?? this.lessons,

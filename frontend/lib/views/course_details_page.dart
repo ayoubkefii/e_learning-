@@ -5,6 +5,7 @@ import '../providers/course_provider.dart';
 import '../models/course.dart';
 import '../models/module.dart' as module_model;
 import '../services/module_service.dart';
+import '../views/module_details_page.dart';
 
 class CourseDetailsPage extends StatefulWidget {
   final int courseId;
@@ -194,10 +195,13 @@ class _CourseDetailsPageState extends State<CourseDetailsPage> {
                                   )
                                 : null,
                             onTap: () {
-                              Navigator.pushNamed(
+                              Navigator.push(
                                 context,
-                                '/module-details',
-                                arguments: module.id,
+                                MaterialPageRoute(
+                                  builder: (context) => ModuleDetailsPage(
+                                    module: module,
+                                  ),
+                                ),
                               );
                             },
                           ),

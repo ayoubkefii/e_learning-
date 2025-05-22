@@ -101,7 +101,8 @@ class _CreateCoursePageState extends State<CreateCoursePage> {
       );
 
       // Create course
-      final createdCourse = await courseService.createCourse(course);
+      final createdCourse =
+          await courseService.createCourse(course, imageFile: _pickedFile);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

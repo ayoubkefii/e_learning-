@@ -7,6 +7,7 @@ class Course {
   final int trainerId;
   final String? trainerName;
   final String? thumbnailUrl;
+  final String? imageUrl;
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<Module>? modules;
@@ -18,6 +19,7 @@ class Course {
     required this.trainerId,
     this.trainerName,
     this.thumbnailUrl,
+    this.imageUrl,
     required this.createdAt,
     required this.updatedAt,
     this.modules,
@@ -31,6 +33,7 @@ class Course {
       trainerId: int.parse(json['trainer_id'].toString()),
       trainerName: json['trainer_name'],
       thumbnailUrl: json['thumbnail_url'],
+      imageUrl: json['image_url'],
       createdAt: DateTime.parse(json['created_at']),
       updatedAt: DateTime.parse(json['updated_at']),
       modules: json['modules'] != null
@@ -47,6 +50,7 @@ class Course {
       'trainer_id': trainerId,
       'trainer_name': trainerName,
       'thumbnail_url': thumbnailUrl,
+      'image_url': imageUrl,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
       'modules': modules?.map((x) => x.toJson()).toList(),
@@ -60,6 +64,7 @@ class Course {
     int? trainerId,
     String? trainerName,
     String? thumbnailUrl,
+    String? imageUrl,
     DateTime? createdAt,
     DateTime? updatedAt,
     List<Module>? modules,
@@ -71,6 +76,7 @@ class Course {
       trainerId: trainerId ?? this.trainerId,
       trainerName: trainerName ?? this.trainerName,
       thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      imageUrl: imageUrl ?? this.imageUrl,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       modules: modules ?? this.modules,

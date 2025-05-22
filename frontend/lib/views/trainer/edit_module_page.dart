@@ -51,7 +51,7 @@ class _EditModulePageState extends State<EditModulePage> {
         description: _descriptionController.text.trim(),
         orderIndex: widget.module.orderIndex,
         createdAt: widget.module.createdAt,
-        updatedAt: DateTime.now(),
+        updatedAt: DateTime.now().toIso8601String(),
       );
 
       await moduleService.updateModule(updatedModule);
