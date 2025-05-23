@@ -42,7 +42,8 @@ class AuthProvider with ChangeNotifier {
           _user = User.fromJson(data['user']);
           print('DEBUG: Created user object: ${_user?.toJson()}');
           print('DEBUG: User role after creation: ${_user?.role}');
-          print('DEBUG: Is trainer check: ${_user?.role.trim().toLowerCase() == 'trainer'}');
+          print(
+              'DEBUG: Is trainer check: ${_user?.role.trim().toLowerCase() == 'trainer'}');
           notifyListeners();
           return true;
         }

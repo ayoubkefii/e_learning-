@@ -1,9 +1,9 @@
 <?php return array(
     'root' => array(
         'name' => 'flutter-learn/backend',
-        'pretty_version' => '1.0.0+no-version-set',
-        'version' => '1.0.0.0',
-        'reference' => null,
+        'pretty_version' => 'dev-main',
+        'version' => 'dev-main',
+        'reference' => 'dc7005c0012c565913e1569ef6c4dd79e9016748',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -20,9 +20,9 @@
             'dev_requirement' => false,
         ),
         'flutter-learn/backend' => array(
-            'pretty_version' => '1.0.0+no-version-set',
-            'version' => '1.0.0.0',
-            'reference' => null,
+            'pretty_version' => 'dev-main',
+            'version' => 'dev-main',
+            'reference' => 'dc7005c0012c565913e1569ef6c4dd79e9016748',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

@@ -20,6 +20,7 @@ import 'views/trainer/edit_course_page.dart';
 import 'views/trainer/edit_module_page.dart';
 import 'views/course_details_page.dart';
 import 'views/home_page.dart';
+import 'views/trainer/users_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -132,6 +133,13 @@ void main() async {
             final module = ModalRoute.of(context)!.settings.arguments
                 as module_model.Module;
             return EditModulePage(module: module);
+          },
+          '/trainer/students': (context) {
+            final authProvider = context.read<AuthProvider>();
+            if (!authProvider.isTrainer) {
+              return const HomePage();
+            }
+            return const UsersPage();
           },
         },
       ),

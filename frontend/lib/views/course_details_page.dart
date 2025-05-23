@@ -6,6 +6,7 @@ import '../models/course.dart';
 import '../models/module.dart' as module_model;
 import '../services/module_service.dart';
 import '../views/module_details_page.dart';
+import '../views/trainer/quiz_management_page.dart';
 
 class CourseDetailsPage extends StatefulWidget {
   final int courseId;
@@ -218,27 +219,59 @@ class _CourseDetailsPageState extends State<CourseDetailsPage>
                                           ),
                                         ),
                                         if (isTrainer)
-                                          ElevatedButton.icon(
-                                            onPressed: () async {
-                                              final result =
-                                                  await Navigator.pushNamed(
-                                                context,
-                                                '/trainer/modules/create',
-                                                arguments: course.id,
-                                              );
-                                              if (result == true) {
-                                                _loadData();
-                                              }
-                                            },
-                                            icon: const Icon(Icons.add),
-                                            label: const Text('Add Module'),
-                                            style: ElevatedButton.styleFrom(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                horizontal: 16,
-                                                vertical: 12,
+                                          Row(
+                                            children: [
+                                              ElevatedButton.icon(
+                                                onPressed: () async {
+                                                  final result =
+                                                      await Navigator.pushNamed(
+                                                    context,
+                                                    '/trainer/modules/create',
+                                                    arguments: course.id,
+                                                  );
+                                                  if (result == true) {
+                                                    _loadData();
+                                                  }
+                                                },
+                                                icon: const Icon(Icons.add),
+                                                label: const Text('Add Module'),
+                                                style: ElevatedButton.styleFrom(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 12,
+                                                  ),
+                                                ),
                                               ),
-                                            ),
+                                              const SizedBox(width: 8),
+                                              ElevatedButton.icon(
+                                                onPressed: () async {
+                                                  final result =
+                                                      await Navigator.push(
+                                                    context,
+                                                    MaterialPageRoute(
+                                                      builder: (context) =>
+                                                          QuizManagementPage(
+                                                        course: course,
+                                                      ),
+                                                    ),
+                                                  );
+                                                  if (result == true) {
+                                                    _loadData();
+                                                  }
+                                                },
+                                                icon: const Icon(Icons.quiz),
+                                                label: const Text(
+                                                    'Manage Quizzes'),
+                                                style: ElevatedButton.styleFrom(
+                                                  padding: const EdgeInsets
+                                                      .symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 12,
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                       ],
                                     ),

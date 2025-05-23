@@ -1,44 +1,56 @@
 class User {
-  final int? id;
-  final String? name;
-  final String? email;
-  final String? username;
-  final String? role;
+  final int id;
+  final String name;
+  final String email;
+  final String username;
+  final String role;
+  final bool isEnrolled;
+  final bool isActive;
   final String? token;
-  final bool? isActive;
-  final bool? isEnrolled;
-  final DateTime? createdAt;
-  final DateTime? updatedAt;
 
   User({
-    this.id,
-    this.name,
-    this.email,
-    this.username,
-    this.role,
+    required this.id,
+    this.name = '',
+    required this.email,
+    required this.username,
+    required this.role,
+    this.isEnrolled = false,
+    this.isActive = true,
     this.token,
-    this.isActive,
-    this.isEnrolled,
-    this.createdAt,
-    this.updatedAt,
   });
+
+  User copyWith({
+    int? id,
+    String? name,
+    String? email,
+    String? username,
+    String? role,
+    bool? isEnrolled,
+    bool? isActive,
+    String? token,
+  }) {
+    return User(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      username: username ?? this.username,
+      role: role ?? this.role,
+      isEnrolled: isEnrolled ?? this.isEnrolled,
+      isActive: isActive ?? this.isActive,
+      token: token ?? this.token,
+    );
+  }
 
   factory User.fromJson(Map<String, dynamic> json) {
     return User(
-      id: json['id'] != null ? int.parse(json['id'].toString()) : null,
-      name: json['name'],
-      email: json['email'],
-      username: json['username'],
-      role: json['role'],
-      token: json['token'],
-      isActive: json['is_active'] == 1 || json['is_active'] == true,
-      isEnrolled: json['is_enrolled'] == 1 || json['is_enrolled'] == true,
-      createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
-          : null,
-      updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
-          : null,
+      id: json['id'] as int,
+      name: json['name'] as String? ?? '',
+      email: json['email'] as String,
+      username: json['username'] as String,
+      role: json['role'] as String,
+      isEnrolled: json['is_enrolled'] as bool? ?? false,
+      isActive: json['is_active'] as bool? ?? true,
+      token: json['token'] as String?,
     );
   }
 
@@ -49,37 +61,14 @@ class User {
       'email': email,
       'username': username,
       'role': role,
-      'token': token,
-      'is_active': isActive,
       'is_enrolled': isEnrolled,
-      'created_at': createdAt?.toIso8601String(),
-      'updated_at': updatedAt?.toIso8601String(),
+      'is_active': isActive,
+      'token': token,
     };
   }
 
-  User copyWith({
-    int? id,
-    String? name,
-    String? email,
-    String? username,
-    String? role,
-    String? token,
-    bool? isActive,
-    bool? isEnrolled,
-    DateTime? createdAt,
-    DateTime? updatedAt,
-  }) {
-    return User(
-      id: id ?? this.id,
-      name: name ?? this.name,
-      email: email ?? this.email,
-      username: username ?? this.username,
-      role: role ?? this.role,
-      token: token ?? this.token,
-      isActive: isActive ?? this.isActive,
-      isEnrolled: isEnrolled ?? this.isEnrolled,
-      createdAt: createdAt ?? this.createdAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-    );
+  @override
+  String toString() {
+    return 'User(id: $id, name: $name, email: $email, username: $username, role: $role, isEnrolled: $isEnrolled, isActive: $isActive, token: ${token != null ? "present" : "null"})';
   }
 }

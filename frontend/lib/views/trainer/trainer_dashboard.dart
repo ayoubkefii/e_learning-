@@ -145,8 +145,13 @@ class _TrainerDashboardState extends State<TrainerDashboard>
                               radius: 30,
                               backgroundColor: theme.primaryColor,
                               child: Text(
-                                user?.name?.substring(0, 1).toUpperCase() ??
-                                    'T',
+                                user?.name?.isNotEmpty == true
+                                    ? user!.name!.substring(0, 1).toUpperCase()
+                                    : user?.username?.isNotEmpty == true
+                                        ? user!.username!
+                                            .substring(0, 1)
+                                            .toUpperCase()
+                                        : 'T',
                                 style: const TextStyle(
                                   fontSize: 24,
                                   fontWeight: FontWeight.bold,

@@ -6,7 +6,12 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user.dart';
-import '../models/course.dart';
+import '../models/course.dart' as course_models;
+import '../models/quiz.dart' as quiz_models;
+import '../models/quiz_attempt.dart';
+import '../models/quiz_answer.dart';
+import '../models/lesson.dart' as lesson_models;
+import '../models/module.dart' as module_models;
 
 class ApiService {
   final Dio dio;
@@ -100,60 +105,60 @@ class ApiService {
   // Authentication
   Future<User> login(String email, String password) async {
     try {
-      print('Attempting login with:');
-      print('Email: $email');
-
+      print('DEBUG: Attempting login for email: $email');
       final response = await dio.post(
         '/auth/login.php',
-        data: jsonEncode({
+        data: {
           'email': email,
           'password': password,
-        }),
-        options: Options(
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          validateStatus: (status) {
-            return status! < 500;
-          },
-        ),
+        },
       );
 
-      print('Login response status: ${response.statusCode}');
-      print('Login response data: ${response.data}');
+      print('DEBUG: Login response status: ${response.statusCode}');
+      print('DEBUG: Raw response data: ${response.data}');
 
-      if (response.statusCode == 200 && response.data != null) {
-        final userData = response.data['user'];
-        final token = response.data['jwt'];
+      if (response.statusCode == 200) {
+        final data = response.data;
+        print('DEBUG: Parsed login data: $data');
 
-        if (userData == null) {
-          throw Exception('Invalid response format: user data is missing');
+        if (data['message'] == 'Login successful.') {
+          final userData = data['user'];
+          print('DEBUG: User data from response: $userData');
+
+          // Store token first
+          final token = data['jwt'];
+          if (token == null || token.isEmpty) {
+            print('DEBUG: No token received in login response');
+            throw Exception('Login failed: No token received');
+          }
+
+          print('DEBUG: Storing token: $token');
+          await prefs.setString('token', token);
+          print('DEBUG: Token stored in SharedPreferences');
+
+          // Create user object with token
+          final user = User.fromJson(userData).copyWith(token: token);
+          print('DEBUG: Created user object with token: ${user.toString()}');
+
+          // Verify token was stored
+          final storedToken = prefs.getString('token');
+          print('DEBUG: Verified stored token: $storedToken');
+
+          if (storedToken != token) {
+            print('DEBUG: Token verification failed');
+            throw Exception('Login failed: Token storage error');
+          }
+
+          return user;
+        } else {
+          throw Exception(data['error'] ?? 'Login failed');
         }
-
-        final user = User.fromJson(userData).copyWith(token: token);
-        prefs.setString('token', token);
-        return user;
       } else {
-        final errorMessage = response.data?['message'] ?? 'Login failed';
-        throw Exception(errorMessage);
+        throw Exception('Login failed: ${response.statusCode}');
       }
-    } on DioException catch (e) {
-      print('DioError during login:');
-      print('Error type: ${e.type}');
-      print('Error message: ${e.message}');
-      print('Error response: ${e.response?.data}');
-      print('Request URL: ${e.requestOptions.uri}');
-      print('Request headers: ${e.requestOptions.headers}');
-      print('Request data: ${e.requestOptions.data}');
-
-      if (e.response?.data != null && e.response?.data['message'] != null) {
-        throw Exception(e.response?.data['message']);
-      }
-      throw Exception('Login failed: ${e.message}');
     } catch (e) {
-      print('Unexpected error during login: $e');
-      throw Exception('Login failed: $e');
+      print('DEBUG: Login error: $e');
+      rethrow;
     }
   }
 
@@ -215,7 +220,7 @@ class ApiService {
   }
 
   // Courses
-  Future<List<Course>> getCourses() async {
+  Future<List<course_models.Course>> getCourses() async {
     try {
       print('Fetching courses...');
       final token = prefs.getString('token');
@@ -241,7 +246,7 @@ class ApiService {
       if (response.statusCode == 200) {
         if (response.data is Map && response.data['records'] is List) {
           return (response.data['records'] as List)
-              .map((json) => Course.fromJson(json))
+              .map((json) => course_models.Course.fromJson(json))
               .toList();
         } else {
           print('Unexpected response format: ${response.data}');
@@ -284,11 +289,11 @@ class ApiService {
     }
   }
 
-  Future<Course> getCourse(int id) async {
+  Future<course_models.Course> getCourse(int id) async {
     try {
       final response = await dio.get('/courses/get.php?id=$id');
       if (response.statusCode == 200) {
-        return Course.fromJson(response.data);
+        return course_models.Course.fromJson(response.data);
       }
       throw Exception('Failed to load course');
     } catch (e) {
@@ -296,7 +301,7 @@ class ApiService {
     }
   }
 
-  Future<Course> createCourse(Course course) async {
+  Future<course_models.Course> createCourse(course_models.Course course) async {
     try {
       print('Creating course with data: ${course.toJson()}');
 
@@ -318,7 +323,7 @@ class ApiService {
       print('Create course response data: ${response.data}');
 
       if (response.statusCode == 201) {
-        return Course.fromJson(response.data);
+        return course_models.Course.fromJson(response.data);
       }
       throw Exception(
           'Failed to create course: ${response.data['message'] ?? 'Unknown error'}');
@@ -328,7 +333,7 @@ class ApiService {
     }
   }
 
-  Future<void> updateCourse(Course course) async {
+  Future<void> updateCourse(course_models.Course course) async {
     try {
       final response = await dio.post(
         '/courses/update.php',
@@ -413,6 +418,8 @@ class ApiService {
         options: Options(
           headers: {
             if (token != null) 'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
           },
         ),
       );
@@ -421,8 +428,8 @@ class ApiService {
       if (endpoint == '/auth/login.php' && response.statusCode == 200) {
         final responseData = response.data;
         if (responseData is Map<String, dynamic> &&
-            responseData.containsKey('token')) {
-          prefs.setString('token', responseData['token']);
+            responseData.containsKey('jwt')) {
+          await prefs.setString('token', responseData['jwt']);
         }
       }
 
@@ -432,63 +439,462 @@ class ApiService {
     }
   }
 
-  Future<List<User>> getStudents() async {
+  Future<List<User>> getUsers() async {
     try {
-      final response = await dio.get('/students/list.php');
-      if (response.statusCode == 200 && response.data['status'] == 'success') {
-        final List<dynamic> studentsData = response.data['data'];
-        return studentsData.map((data) => User.fromJson(data)).toList();
+      print('DEBUG: Getting token from SharedPreferences');
+      final token = prefs.getString('token');
+      print('DEBUG: Token from SharedPreferences: $token');
+
+      if (token == null || token.isEmpty) {
+        print('DEBUG: No token found in SharedPreferences');
+        throw Exception('No token found. Please log in again.');
       }
-      throw Exception(response.data['message'] ?? 'Failed to fetch students');
+
+      print('DEBUG: Making request to users/list.php');
+      final response = await dio.get(
+        '/users/list.php',
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          validateStatus: (status) {
+            return status! < 500;
+          },
+        ),
+      );
+
+      print('DEBUG: Response status: ${response.statusCode}');
+      print('DEBUG: Response data: ${response.data}');
+
+      if (response.statusCode == 200) {
+        if (response.data is Map && response.data['records'] is List) {
+          final List<dynamic> records = response.data['records'];
+          return records.map((record) => User.fromJson(record)).toList();
+        } else {
+          print('DEBUG: Unexpected response format: ${response.data}');
+          throw Exception('Invalid response format from server');
+        }
+      } else if (response.statusCode == 401) {
+        print('DEBUG: Unauthorized access. Token may be invalid.');
+        throw Exception('Unauthorized access. Please log in again.');
+      } else {
+        final errorMessage = response.data['message'] ?? 'Failed to load users';
+        print('DEBUG: Error response: $errorMessage');
+        throw Exception(errorMessage);
+      }
     } on DioException catch (e) {
-      throw Exception(
-          e.response?.data['message'] ?? 'Failed to fetch students');
+      print('DEBUG: DioError in getUsers:');
+      print('Error type: ${e.type}');
+      print('Error message: ${e.message}');
+      print('Error response: ${e.response?.data}');
+
+      if (e.type == DioExceptionType.connectionError) {
+        throw Exception(
+            'Failed to connect to server. Please check your internet connection.');
+      }
+
+      throw Exception('Failed to load users: ${e.message}');
+    } catch (e) {
+      print('DEBUG: Error in getUsers: $e');
+      rethrow;
     }
   }
 
   Future<User> getStudentDetails(int studentId) async {
     try {
-      final response = await dio
-          .get('/students/get.php', queryParameters: {'id': studentId});
-      if (response.statusCode == 200 && response.data['status'] == 'success') {
+      final token = prefs.getString('token');
+      final response = await dio.get(
+        '/students/get.php',
+        queryParameters: {'id': studentId},
+        options: Options(
+          headers: {
+            if (token != null) 'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
         return User.fromJson(response.data['data']);
       }
-      throw Exception(
-          response.data['message'] ?? 'Failed to fetch student details');
-    } on DioException catch (e) {
-      throw Exception(
-          e.response?.data['message'] ?? 'Failed to fetch student details');
+      throw Exception('Failed to load student details');
+    } catch (e) {
+      throw Exception('Failed to load student details: $e');
     }
   }
 
-  Future<User> updateStudent(int studentId, Map<String, dynamic> data) async {
+  Future<void> updateStudent(int studentId, Map<String, dynamic> data) async {
     try {
+      final token = prefs.getString('token');
       final response = await dio.post(
         '/students/update.php',
         data: {'id': studentId, ...data},
+        options: Options(
+          headers: {
+            if (token != null) 'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
       );
-      if (response.statusCode == 200 && response.data['status'] == 'success') {
-        return User.fromJson(response.data['data']);
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to update student');
       }
-      throw Exception(response.data['message'] ?? 'Failed to update student');
-    } on DioException catch (e) {
-      throw Exception(
-          e.response?.data['message'] ?? 'Failed to update student');
+    } catch (e) {
+      throw Exception('Failed to update student: $e');
     }
   }
 
   Future<void> deleteStudent(int studentId) async {
     try {
-      final response = await dio.delete(
+      final token = prefs.getString('token');
+      final response = await dio.post(
         '/students/delete.php',
         data: {'id': studentId},
+        options: Options(
+          headers: {
+            if (token != null) 'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+        ),
       );
-      if (response.statusCode != 200 || response.data['status'] != 'success') {
-        throw Exception(response.data['message'] ?? 'Failed to delete student');
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete student');
       }
-    } on DioException catch (e) {
-      throw Exception(
-          e.response?.data['message'] ?? 'Failed to delete student');
+    } catch (e) {
+      throw Exception('Failed to delete student: $e');
+    }
+  }
+
+  // Quiz Methods
+  Future<quiz_models.Quiz> getQuiz(int quizId) async {
+    try {
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) {
+        throw Exception('No token found. Please log in again.');
+      }
+
+      final response = await dio.get(
+        '/quizzes/get.php',
+        queryParameters: {'id': quizId},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return quiz_models.Quiz.fromJson(response.data);
+      } else {
+        throw Exception('Failed to load quiz: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in getQuiz: $e');
+      rethrow;
+    }
+  }
+
+  Future<quiz_models.QuizAttempt> startQuizAttempt(int quizId) async {
+    try {
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) {
+        throw Exception('No token found. Please log in again.');
+      }
+
+      final response = await dio.post(
+        '/quizzes/start.php',
+        data: {'quiz_id': quizId},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return quiz_models.QuizAttempt.fromJson(response.data);
+      } else {
+        throw Exception('Failed to start quiz: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in startQuizAttempt: $e');
+      rethrow;
+    }
+  }
+
+  Future<quiz_models.QuizAttempt> submitQuizAnswers(
+      int attemptId, List<quiz_models.QuizAnswer> answers) async {
+    try {
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) {
+        throw Exception('No token found. Please log in again.');
+      }
+
+      final response = await dio.post(
+        '/quizzes/submit.php',
+        data: {
+          'attempt_id': attemptId,
+          'answers': answers.map((a) => a.toJson()).toList(),
+        },
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return quiz_models.QuizAttempt.fromJson(response.data);
+      } else {
+        throw Exception('Failed to submit quiz: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in submitQuizAnswers: $e');
+      rethrow;
+    }
+  }
+
+  Future<List<quiz_models.QuizAttempt>> getQuizAttempts(int quizId) async {
+    try {
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) {
+        throw Exception('No token found. Please log in again.');
+      }
+
+      final response = await dio.get(
+        '/quizzes/attempts.php',
+        queryParameters: {'quiz_id': quizId},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> attempts = response.data['attempts'];
+        return attempts
+            .map((a) => quiz_models.QuizAttempt.fromJson(a))
+            .toList();
+      } else {
+        throw Exception('Failed to load quiz attempts: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in getQuizAttempts: $e');
+      rethrow;
+    }
+  }
+
+  // Quiz Management Methods
+  Future<List<quiz_models.Quiz>> getCourseQuizzes(int courseId) async {
+    try {
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) {
+        throw Exception('No token found. Please log in again.');
+      }
+
+      final response = await dio.get(
+        '/quizzes/course.php',
+        queryParameters: {'course_id': courseId},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        final List<dynamic> quizzes = response.data['quizzes'];
+        return quizzes.map((q) => quiz_models.Quiz.fromJson(q)).toList();
+      } else {
+        throw Exception('Failed to load quizzes: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in getCourseQuizzes: $e');
+      rethrow;
+    }
+  }
+
+  Future<quiz_models.Quiz> createQuiz(quiz_models.Quiz quiz) async {
+    try {
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) {
+        throw Exception('No token found. Please log in again.');
+      }
+
+      final response = await dio.post(
+        '/quizzes/create.php',
+        data: quiz.toJson(),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 201) {
+        return quiz_models.Quiz.fromJson(response.data);
+      } else {
+        throw Exception('Failed to create quiz: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in createQuiz: $e');
+      rethrow;
+    }
+  }
+
+  Future<quiz_models.Quiz> updateQuiz(quiz_models.Quiz quiz) async {
+    try {
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) {
+        throw Exception('No token found. Please log in again.');
+      }
+
+      final response = await dio.post(
+        '/quizzes/update.php',
+        data: quiz.toJson(),
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return quiz_models.Quiz.fromJson(response.data);
+      } else {
+        throw Exception('Failed to update quiz: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in updateQuiz: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteQuiz(int quizId) async {
+    try {
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) {
+        throw Exception('No token found. Please log in again.');
+      }
+
+      final response = await dio.post(
+        '/quizzes/delete.php',
+        data: {'id': quizId},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode != 200) {
+        throw Exception('Failed to delete quiz: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in deleteQuiz: $e');
+      rethrow;
+    }
+  }
+
+  // Course Management Methods
+  Future<bool> isCourseOwner(int courseId) async {
+    try {
+      final token = prefs.getString('token');
+      if (token == null) {
+        throw Exception('No token found');
+      }
+
+      final response = await dio.get(
+        '/courses/owner.php',
+        queryParameters: {'id': courseId},
+        options: Options(
+          headers: {'Authorization': 'Bearer $token'},
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return response.data['is_owner'] ?? false;
+      }
+      return false;
+    } catch (e) {
+      print('Error checking course ownership: $e');
+      return false;
+    }
+  }
+
+  // Lesson Methods
+  Future<lesson_models.Lesson> getLesson(int lessonId) async {
+    try {
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) {
+        throw Exception('No token found. Please log in again.');
+      }
+
+      final response = await dio.get(
+        '/lessons/get.php',
+        queryParameters: {'id': lessonId},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return lesson_models.Lesson.fromJson(response.data);
+      } else {
+        throw Exception('Failed to load lesson: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in getLesson: $e');
+      rethrow;
+    }
+  }
+
+  // Module Methods
+  Future<module_models.Module> getModule(int moduleId) async {
+    try {
+      final token = prefs.getString('token');
+      if (token == null || token.isEmpty) {
+        throw Exception('No token found. Please log in again.');
+      }
+
+      final response = await dio.get(
+        '/modules/get.php',
+        queryParameters: {'id': moduleId},
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+            'Content-Type': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200) {
+        return module_models.Module.fromJson(response.data);
+      } else {
+        throw Exception('Failed to load module: ${response.statusCode}');
+      }
+    } catch (e) {
+      print('Error in getModule: $e');
+      rethrow;
     }
   }
 }
