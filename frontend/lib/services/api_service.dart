@@ -431,4 +431,64 @@ class ApiService {
       rethrow;
     }
   }
+
+  Future<List<User>> getStudents() async {
+    try {
+      final response = await dio.get('/students/list.php');
+      if (response.statusCode == 200 && response.data['status'] == 'success') {
+        final List<dynamic> studentsData = response.data['data'];
+        return studentsData.map((data) => User.fromJson(data)).toList();
+      }
+      throw Exception(response.data['message'] ?? 'Failed to fetch students');
+    } on DioException catch (e) {
+      throw Exception(
+          e.response?.data['message'] ?? 'Failed to fetch students');
+    }
+  }
+
+  Future<User> getStudentDetails(int studentId) async {
+    try {
+      final response = await dio
+          .get('/students/get.php', queryParameters: {'id': studentId});
+      if (response.statusCode == 200 && response.data['status'] == 'success') {
+        return User.fromJson(response.data['data']);
+      }
+      throw Exception(
+          response.data['message'] ?? 'Failed to fetch student details');
+    } on DioException catch (e) {
+      throw Exception(
+          e.response?.data['message'] ?? 'Failed to fetch student details');
+    }
+  }
+
+  Future<User> updateStudent(int studentId, Map<String, dynamic> data) async {
+    try {
+      final response = await dio.post(
+        '/students/update.php',
+        data: {'id': studentId, ...data},
+      );
+      if (response.statusCode == 200 && response.data['status'] == 'success') {
+        return User.fromJson(response.data['data']);
+      }
+      throw Exception(response.data['message'] ?? 'Failed to update student');
+    } on DioException catch (e) {
+      throw Exception(
+          e.response?.data['message'] ?? 'Failed to update student');
+    }
+  }
+
+  Future<void> deleteStudent(int studentId) async {
+    try {
+      final response = await dio.delete(
+        '/students/delete.php',
+        data: {'id': studentId},
+      );
+      if (response.statusCode != 200 || response.data['status'] != 'success') {
+        throw Exception(response.data['message'] ?? 'Failed to delete student');
+      }
+    } on DioException catch (e) {
+      throw Exception(
+          e.response?.data['message'] ?? 'Failed to delete student');
+    }
+  }
 }
